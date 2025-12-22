@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Salarial | Control de Poder Adquisitivo y Verificación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'neutral-bg': '#fdfbf7',
+                        'panel-bg': '#ffffff',
+                        'accent-blue': '#0f172a',
+                        'accent-gold': '#92400e',
+                        'success-green': '#15803d',
+                        'border-warm': '#e2e8f0',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #fdfbf7; color: #1e293b; }
+        .chart-container { position: relative; width: 100%; height: 320px; margin: auto; }
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+        .formula-mono { font-family: 'Courier New', Courier, monospace; }
+        .step-block { 
+            display: block; 
+            padding: 10px 0; 
+            border-bottom: 1px solid rgba(0,0,0,0.06); 
+            line-height: 1.6;
+        }
+        .step-block:last-child { border-bottom: none; }
+        .badge-pa { padding: 4px 12px; border-radius: 9999px; font-weight: 800; font-size: 0.85rem; }
+    </style>
+    <!-- Chosen Palette: Slate & Amber Professional -->
+    <!-- Application Structure Plan:
+        1. DASHBOARD DE CONTROL: Resumen global del Índice de Poder Adquisitivo Final.
+        2. PANEL DE ENTRADA: Captura de variables T1, T2, Inflación Real y TC.
+        3. GRÁFICOS DE ANÁLISIS: Trayectoria del Índice PA y Comparativa de Pesos.
+        4. TABLA DE AUDITORÍA: 
+           - Fila de Datos: Resultados nominales.
+           - Fila de Desglose (GRANDE): Pasos A, B, C, D línea por línea.
+           - Bloque de Control: Prueba matemática de "Poder Adquisitivo No Perdido" comparando Pesos Iniciales vs Pesos Reales.
+    -->
+    <!-- Visualization & Content Choices:
+        - Goal: Prove no loss of purchasing power. -> Method: Index Base 100 logic and Bar comparison.
+        - Goal: Clarity in math. -> Method: Large block-level formulas with explicit numerators and denominators.
+        - Goal: Verification. -> Method: Constant Value proof (Inflation-adjusted final pesos).
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="p-4 md:p-8 lg:p-12 bg-neutral-bg">
+
+    <header class="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+            <h1 class="text-4xl font-black text-accent-blue tracking-tighter">Sistema de Verificación Salarial</h1>
+            <p class="text-gray-500 font-medium">Metodología de Divisores, Imputación de Adelantos y Control de Poder Adquisitivo</p>
+        </div>
+        <div id="statusBadge" class="hidden flex items-center gap-4 bg-white p-5 rounded-2xl shadow-xl border-2 border-slate-800">
+            <div class="text-right">
+                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Índice PA Final</span>
+                <div id="mainIndexVal" class="text-3xl font-black text-success-green">100.00</div>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-xl">✅</div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- PANEL DE ENTRADA -->
+        <aside class="lg:col-span-4 space-y-6">
+            <div class="bg-panel-bg shadow-2xl rounded-3xl p-8 border border-border-warm">
+                <h2 class="text-xl font-bold text-accent-blue mb-6 flex items-center gap-2">
+                    <span>📊</span> Datos del Semestre
+                </h2>
+                
+                <form id="salaryForm" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-black text-gray-400 uppercase mb-1">Periodo</label>
+                        <input type="text" id="period" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-accent-blue outline-none" placeholder="Ej: 2do Sem 2025">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">TC Inicio ($)</label>
+                            <input type="number" step="0.01" id="tcStart" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">TC Final ($)</label>
+                            <input type="number" step="0.01" id="tcEnd" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                        </div>
+                    </div>
+
+                    <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2">Variables de Inflación</h3>
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">Adelanto T1 (Recibido previo %)</label>
+                            <input type="number" step="0.01" id="infT1" class="w-full p-3 bg-white border border-slate-200 rounded-xl">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">Inflación Real Semestre (%)</label>
+                            <input type="number" step="0.01" id="infReal" class="w-full p-3 bg-white border border-slate-200 rounded-xl">
+                        </div>
+                        <div class="pt-2">
+                            <label class="block text-xs font-bold text-amber-700 mb-1">Adelanto T2 (Siguiente Proy %)</label>
+                            <input type="number" step="0.01" id="infT2" class="w-full p-3 bg-amber-50 border border-amber-200 rounded-xl font-bold text-amber-900">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-black text-gray-400 uppercase mb-1">Recuperación Extra (%)</label>
+                        <input type="number" step="0.01" id="recExt" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl" value="0.00">
+                    </div>
+
+                    <button type="button" onclick="calculateAdjustment()" class="w-full bg-accent-blue text-white font-black py-4 rounded-2xl hover:bg-slate-800 transition shadow-lg transform hover:-translate-y-1">
+                        CALCULAR Y VERIFICAR
+                    </button>
+                    <button type="button" onclick="resetApp()" class="w-full py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-600">
+                        Reiniciar Simulación
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- RESULTADOS Y CONTROL -->
+        <section class="lg:col-span-8 space-y-8">
+            
+            <!-- ÁREA DE CONTROL VISUAL -->
+            <div class="bg-panel-bg shadow-xl rounded-3xl p-8 border border-border-warm">
+                <h2 class="text-xl font-bold text-accent-blue mb-8 flex items-center gap-2">
+                    <span>🛡️</span> Área de Control de Poder Adquisitivo
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div>
+                        <p class="text-xs font-black text-gray-400 uppercase mb-4">Índice PA (Base 100)</p>
+                        <div class="chart-container"><canvas id="idxChart"></canvas></div>
+                    </div>
+                    <div>
+                        <p class="text-xs font-black text-gray-400 uppercase mb-4">Verificación de Pesos Reales</p>
+                        <div class="chart-container"><canvas id="valChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABLA DE AUDITORÍA -->
+            <div class="bg-panel-bg shadow-xl rounded-3xl border border-border-warm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
+                                <th class="p-5">Periodo</th>
+                                <th class="p-5 text-right">Sal. USD Final</th>
+                                <th class="p-5 text-right">Factor Neto</th>
+                                <th class="p-5 text-right">Pesos Finales</th>
+                                <th class="p-5 text-center">Índice PA</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditTableBody" class="text-sm">
+                            <!-- Inyectado por JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="emptyState" class="py-24 bg-gray-50 rounded-3xl border-4 border-dashed border-gray-200 text-center">
+                <p class="text-gray-400 font-bold text-lg">Ingrese datos para generar el reporte de auditoría.</p>
+            </div>
+
+        </section>
+    </main>
+
+    <script>
+        // ESTADO DE LA APLICACIÓN
+        let entries = [];
+        let idxChart = null, valChart = null;
+        const INITIAL_SALARY_USD = 100.00;
+
+        function calculateAdjustment() {
+            const period = document.getElementById('period').value || `P${entries.length + 1}`;
+            const tcS = parseFloat(document.getElementById('tcStart').value);
+            const tcE = parseFloat(document.getElementById('tcEnd').value);
+            const infR = parseFloat(document.getElementById('infReal').value);
+            const infT1 = parseFloat(document.getElementById('infT1').value);
+            const infT2 = parseFloat(document.getElementById('infT2').value);
+            const recE = parseFloat(document.getElementById('recExt').value) || 0;
+
+            if ([tcS, tcE, infR, infT1, infT2].some(isNaN)) {
+                alert("Por favor, rellene todos los campos numéricos.");
+                return;
+            }
+
+            const prevSalUSD = entries.length > 0 ? entries[entries.length - 1].salFinalUSD : INITIAL_SALARY_USD;
+            const prevAcum = entries.length > 0 ? entries[entries.length - 1].nextAcum : 1.0000;
+
+            // 1. CÁLCULO DE FACTORES
+            const factorInf = (1 + (infR / 100)) / (1 + (infT1 / 100));
+            const factorTC = tcS / tcE;
+            const factorBaseT2 = (1 + (infT2 / 100));
+            
+            // Factor Neto (Sin recuperación extra)
+            const rawFactor = factorBaseT2 * factorInf * factorTC * prevAcum;
+
+            // 2. REGLA DE PROTECCIÓN (NO BAJA)
+            let coefFinal = 1.0;
+            let nextAcum = 1.0;
+
+            if (rawFactor < 1) {
+                coefFinal = 1.0 + (recE / 100);
+                nextAcum = rawFactor; // Excedente acumulado para el futuro
+            } else {
+                coefFinal = rawFactor + (recE / 100);
+                nextAcum = 1.0; // Deuda saldada
+            }
+
+            const salFinalUSD = prevSalUSD * coefFinal;
+
+            // 3. CONTROL DE VERIFICACIÓN (MÉTRICAS REALES)
+            const pesosIniciales = prevSalUSD * tcS;
+            const pesosFinales = salFinalUSD * tcE;
+            const pesosFinalesReales = pesosFinales / (1 + (infR / 100));
+            const indicePA = (pesosFinalesReales / pesosIniciales) * 100;
+
+            entries.push({
+                period, tcS, tcE, infR, infT1, infT2, recE,
+                factorInf, factorTC, factorBaseT2, rawFactor, coefFinal,
+                salFinalUSD, nextAcum, prevSalUSD, prevAcum,
+                pesosIniciales, pesosFinales, pesosFinalesReales, indicePA
+            });
+
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('statusBadge').classList.remove('hidden');
+            
+            updateUI();
+            prepareNext(tcE, infT2);
+        }
+
+        function prepareNext(tc, t2) {
+            document.getElementById('period').value = "";
+            document.getElementById('tcStart').value = tc;
+            document.getElementById('tcEnd').value = "";
+            document.getElementById('infT1').value = t2;
+            document.getElementById('infReal').value = "";
+            document.getElementById('infT2').value = "";
+        }
+
+        function updateUI() {
+            renderTable();
+            renderCharts();
+            
+            const last = entries[entries.length - 1];
+            document.getElementById('mainIndexVal').textContent = last.indicePA.toFixed(2);
+            document.getElementById('mainIndexVal').className = last.indicePA >= 100 ? "text-3xl font-black text-success-green" : "text-3xl font-black text-red-600";
+        }
+
+        function renderTable() {
+            const body = document.getElementById('auditTableBody');
+            body.innerHTML = '';
+            
+            entries.forEach(d => {
+                // Fila de Resultados
+                const tr = document.createElement('tr');
+                tr.className = "bg-white font-bold text-slate-800 border-t border-slate-100";
+                tr.innerHTML = `
+                    <td class="p-5 text-accent-blue">${d.period}</td>
+                    <td class="p-5 text-right">$${d.salFinalUSD.toFixed(2)}</td>
+                    <td class="p-5 text-right font-mono">${d.coefFinal.toFixed(4)}</td>
+                    <td class="p-5 text-right text-slate-500">$${d.pesosFinales.toLocaleString('es-ES', {minimumFractionDigits: 2})}</td>
+                    <td class="p-5 text-center">
+                        <span class="badge-pa ${d.indicePA >= 100 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            ${d.indicePA.toFixed(2)}
+                        </span>
+                    </td>
+                `;
+                body.appendChild(tr);
+
+                // FILA DE DESGLOSE (MÁS GRANDE Y LÍNEA POR LÍNEA)
+                const vr = document.createElement('tr');
+                vr.className = "bg-gray-50 border-b-2 border-slate-200";
+                
+                const lineA = `<span class="step-block text-base"><strong>[A] Diferencial de Inflación:</strong> (1 + ${ (d.infR/100).toFixed(4) } [Real]) / (1 + ${ (d.infT1/100).toFixed(4) } [Adelanto T1]) = <b class="text-blue-700 font-black">${d.factorInf.toFixed(4)}</b></span>`;
+                const lineB = `<span class="step-block text-base"><strong>[B] Diferencial Tipo Cambio:</strong> ${ d.tcS.toFixed(2) } [Inicio] / ${ d.tcE.toFixed(2) } [Final] = <b class="text-blue-700 font-black">${d.factorTC.toFixed(4)}</b></span>`;
+                const lineC = `<span class="step-block text-base"><strong>[C] Base Nueva Proyección:</strong> 1 + ${ (d.infT2/100).toFixed(4) } [Proy T2] = <b class="text-blue-700 font-black">${d.factorBaseT2.toFixed(4)}</b></span>`;
+                const lineD = `<span class="step-block text-base"><strong>[D] Factor Neto Resultante:</strong> ${d.factorBaseT2.toFixed(4)} [C] * ${d.factorInf.toFixed(4)} [A] * ${d.factorTC.toFixed(4)} [B] * ${d.prevAcum.toFixed(4)} [Acum] = <b class="text-indigo-800 font-black">${d.rawFactor.toFixed(4)}</b></span>`;
+                
+                // CONTROL DE VERIFICACIÓN (TEXTO)
+                const controlProof = `
+                    <div class="mt-4 p-6 bg-white rounded-2xl border-2 border-slate-200 shadow-sm">
+                        <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Control de Verificación de Poder Adquisitivo</h4>
+                        <div class="space-y-2 text-base font-medium text-slate-700">
+                            <p>1. <strong>Pesos Iniciales:</strong> $${d.prevSalUSD.toFixed(2)} USD * ${d.tcS.toFixed(2)} TC = <b>$${d.pesosIniciales.toLocaleString('es-ES', {minimumFractionDigits: 2})}</b></p>
+                            <p>2. <strong>Pesos Finales Reales (Inflacionados):</strong> ($${d.salFinalUSD.toFixed(2)} USD * ${d.tcE.toFixed(2)} TC) / (1 + ${(d.infR/100).toFixed(4)}) = <b>$${d.pesosFinalesReales.toLocaleString('es-ES', {minimumFractionDigits: 2})}</b></p>
+                            <p class="pt-2 border-t mt-2 text-lg">
+                                <strong>Resultado del Control:</strong> ${d.pesosFinalesReales.toFixed(2)} / ${d.pesosIniciales.toFixed(2)} = 
+                                <span class="${d.indicePA >= 100 ? 'text-success-green font-black' : 'text-red-600 font-black'}">
+                                    Índice ${d.indicePA.toFixed(2)} ${d.indicePA >= 100 ? '(Poder Adquisitivo Protegido ✅)' : '(Pérdida de Poder Adquisitivo ❌)'}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                `;
+
+                vr.innerHTML = `
+                    <td colspan="5" class="p-8 formula-mono text-slate-600">
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-inner space-y-1 mb-4">
+                            ${lineA}
+                            ${lineB}
+                            ${lineC}
+                            ${lineD}
+                        </div>
+                        ${controlProof}
+                    </td>
+                `;
+                body.appendChild(vr);
+            });
+        }
+
+        function renderCharts() {
+            const labels = entries.map(d => d.period);
+            const paIdx = entries.map(d => d.indicePA);
+            const rSal = entries.map(d => d.pesosFinalesReales);
+            const iSal = entries.map(d => d.pesosIniciales);
+
+            if (idxChart) idxChart.destroy();
+            idxChart = new Chart(document.getElementById('idxChart'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Índice PA (Base 100)',
+                        data: paIdx,
+                        borderColor: '#15803d',
+                        backgroundColor: 'rgba(21, 128, 61, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 6,
+                        pointHoverRadius: 10
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 98, max: 105 } } }
+            });
+
+            if (valChart) valChart.destroy();
+            valChart = new Chart(document.getElementById('valChart'), {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'Pesos Iniciales', data: iSal, backgroundColor: '#cbd5e0' },
+                        { label: 'Pesos Reales Finales', data: rSal, backgroundColor: '#15803d' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function resetApp() {
+            entries = [];
+            document.getElementById('emptyState').classList.remove('hidden');
+            document.getElementById('statusBadge').classList.add('hidden');
+            updateUI();
+        }
+
+        window.onload = () => {
+            // Ejemplo inicial precargado
+            document.getElementById('period').value = "1er Semestre 2025";
+            document.getElementById('tcStart').value = 40.00;
+            document.getElementById('tcEnd').value = 38.50;
+            document.getElementById('infT1').value = 2.50;
+            document.getElementById('infReal').value = 2.10;
+            document.getElementById('infT2').value = 3.30;
+        };
+    </script>
+</body>
+</html>
