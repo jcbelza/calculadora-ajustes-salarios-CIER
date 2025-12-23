@@ -29,27 +29,21 @@
         .formula-mono { font-family: 'Courier New', Courier, monospace; }
         .step-block { 
             display: block; 
-            padding: 12px 0; 
-            border-bottom: 1px solid rgba(0,0,0,0.08); 
-            line-height: 1.6;
+            padding: 16px 0; 
+            border-bottom: 1px solid rgba(0,0,0,0.1); 
+            line-height: 1.8;
         }
         .step-block:last-child { border-bottom: none; }
-        .badge-pa { padding: 4px 12px; border-radius: 9999px; font-weight: 800; font-size: 0.85rem; }
+        .badge-pa { padding: 4px 12px; border-radius: 9999px; font-weight: 800; font-size: 0.9rem; }
+        .highlight-box { border-left: 6px solid #0f172a; padding-left: 1.5rem; background: #f8fafc; }
     </style>
-    <!-- Chosen Palette: Warm Professional Slate & Amber -->
     <!-- Application Structure Plan:
-        1. Resumen Ejecutivo (Dashboard): Muestra el Índice de Poder Adquisitivo global.
+        1. Resumen Ejecutivo: Muestra el Índice de Poder Adquisitivo global.
         2. Panel de Entrada: Variables semestrales (T1, T2, Inf. Real, TC, Recuperación).
-        3. Visualización de Verificación: Gráficos que contrastan el poder adquisitivo real.
-        4. Tabla de Auditoría Detallada: 
-           - Incluye la columna "Ajuste Eff (%)" para ver el impacto de la Recuperación Extra.
-           - Fila de Desglose de Fórmulas: Pasos A, B, C, D en tamaño grande y desglosados.
-           - Prueba de Poder Adquisitivo: Comparación de Pesos Iniciales vs Reales.
-    -->
-    <!-- Visualization & Content Choices:
-        - Goal: Prove no loss of purchasing power. -> Method: Index Base 100 logic.
-        - Goal: Transparency in recovery extra. -> Method: Explicit addition in [RESULTADO FINAL] line.
-        - Goal: Visual proof. -> Method: Chart.js comparing initial vs final real pesos.
+        3. Visualización de Verificación: Gráficos que contrastan el R1 vs R2.
+        4. Tabla de Auditoría: 
+           - Fila de Desglose: Pasos A, B, C, D en tamaño EXTRA GRANDE.
+           - Prueba de Poder Corregida: Compara Resultado 1 (con ratio TC Inicio / TC Final) vs Resultado 2.
     -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
 </head>
@@ -57,15 +51,15 @@
 
     <header class="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-            <h1 class="text-4xl font-black text-accent-blue tracking-tighter">Sistema de Verificación Salarial</h1>
-            <p class="text-gray-500 font-medium">Control de Poder Adquisitivo e Imputación de Adelantos (Metodología Divisores)</p>
+            <h1 class="text-4xl font-black text-accent-blue tracking-tighter uppercase">Sistema de Verificación Salarial</h1>
+            <p class="text-gray-500 font-medium">Control de Poder Adquisitivo e Imputación de Adelantos (Metodología de Divisores)</p>
         </div>
-        <div id="statusBadge" class="hidden flex items-center gap-4 bg-white p-5 rounded-2xl shadow-xl border-2 border-slate-800 animate-fade-in">
+        <div id="statusBadge" class="hidden flex items-center gap-4 bg-white p-5 rounded-2xl shadow-xl border-2 border-slate-800 animate-pulse">
             <div class="text-right">
-                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Índice PA Final</span>
+                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado del Poder Adquisitivo</span>
                 <div id="mainIndexVal" class="text-3xl font-black text-success-green">100.00</div>
             </div>
-            <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-xl">✅</div>
+            <div id="statusIcon" class="text-2xl">✅</div>
         </div>
     </header>
 
@@ -75,12 +69,12 @@
         <aside class="lg:col-span-4 space-y-6">
             <div class="bg-panel-bg shadow-2xl rounded-3xl p-8 border border-border-warm">
                 <h2 class="text-xl font-bold text-accent-blue mb-6 flex items-center gap-2">
-                    <span>📊</span> Ingreso de Datos
+                    <span>📊</span> Ingreso de Variables
                 </h2>
                 
                 <form id="salaryForm" class="space-y-5">
                     <div>
-                        <label class="block text-xs font-black text-gray-400 uppercase mb-1">Periodo del Semestre</label>
+                        <label class="block text-xs font-black text-gray-400 uppercase mb-1">Nombre del Periodo</label>
                         <input type="text" id="period" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-accent-blue outline-none" placeholder="Ej: Jul-Dic 2025">
                     </div>
 
@@ -102,7 +96,7 @@
                             <input type="number" step="0.01" id="infT1" class="w-full p-3 bg-white border border-slate-200 rounded-xl">
                         </div>
                         <div>
-                            <label class="block text-xs text-slate-600 mb-1">Inflación Real Semestre (%)</label>
+                            <label class="block text-xs text-slate-600 mb-1">Inflación Real del Semestre (%)</label>
                             <input type="number" step="0.01" id="infReal" class="w-full p-3 bg-white border border-slate-200 rounded-xl">
                         </div>
                         <div class="pt-2">
@@ -132,7 +126,7 @@
             <!-- ÁREA DE CONTROL VISUAL -->
             <div class="bg-panel-bg shadow-xl rounded-3xl p-8 border border-border-warm">
                 <h2 class="text-xl font-bold text-accent-blue mb-8 flex items-center gap-2">
-                    <span>🛡️</span> Área de Control de Poder Adquisitivo
+                    <span>🛡️</span> Control Visual de Poder Adquisitivo
                 </h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
                     <div>
@@ -140,7 +134,7 @@
                         <div class="chart-container"><canvas id="idxChart"></canvas></div>
                     </div>
                     <div>
-                        <p class="text-xs font-black text-gray-400 uppercase mb-4">Verificación de Pesos Reales</p>
+                        <p class="text-xs font-black text-gray-400 uppercase mb-4">Resultado 1 vs Resultado 2</p>
                         <div class="chart-container"><canvas id="valChart"></canvas></div>
                     </div>
                 </div>
@@ -157,7 +151,7 @@
                                 <th class="p-5 text-right">Factor Neto</th>
                                 <th class="p-5 text-right text-green-300">Ajuste Eff (%)</th>
                                 <th class="p-5 text-right">Pesos Finales</th>
-                                <th class="p-5 text-center">Índice PA</th>
+                                <th class="p-5 text-center">Control PA</th>
                             </tr>
                         </thead>
                         <tbody id="auditTableBody" class="text-sm">
@@ -167,8 +161,8 @@
                 </div>
             </div>
 
-            <div id="emptyState" class="py-24 bg-gray-50 rounded-3xl border-4 border-dashed border-gray-200 text-center">
-                <p class="text-gray-400 font-bold text-lg">Ingrese datos para iniciar el reporte de auditoría.</p>
+            <div id="emptyState" class="py-24 bg-gray-50 rounded-3xl border-4 border-dashed border-gray-200 text-center font-bold text-gray-400">
+                Ingrese datos para iniciar el reporte de auditoría detallado.
             </div>
 
         </section>
@@ -196,14 +190,15 @@
             const prevSalUSD = entries.length > 0 ? entries[entries.length - 1].salFinalUSD : INITIAL_SALARY_USD;
             const prevAcum = entries.length > 0 ? entries[entries.length - 1].nextAcum : 1.0000;
 
-            // 1. CÁLCULO DE FACTORES
+            // 1. FACTORES TÉCNICOS (METODOLOGÍA DE DIVISORES)
             const factorInf = (1 + (infR / 100)) / (1 + (infT1 / 100));
             const factorTC = tcS / tcE;
             const factorBaseT2 = (1 + (infT2 / 100));
             
+            // Factor Neto acumulado
             const rawFactor = factorBaseT2 * factorInf * factorTC * prevAcum;
 
-            // 2. REGLA DE PROTECCIÓN (NO BAJA) + RECUPERACIÓN EXTRA
+            // 2. REGLA DE PROTECCIÓN + RECUPERACIÓN EXTRA
             let baseCoef = 1.0;
             let nextAcum = 1.0;
 
@@ -215,22 +210,32 @@
                 nextAcum = 1.0;
             }
 
-            // Coeficiente final: Ajuste técnico + Recuperación Extra
             const recExtraDec = recE / 100;
             const coefFinal = baseCoef + recExtraDec;
             const salFinalUSD = prevSalUSD * coefFinal;
 
-            // 3. MÉTRICAS DE CONTROL
-            const pesosIniciales = prevSalUSD * tcS;
-            const pesosFinales = salFinalUSD * tcE;
-            const pesosFinalesReales = pesosFinales / (1 + (infR / 100));
-            const indicePA = (pesosFinalesReales / pesosIniciales) * 100;
+            // 3. PRUEBA DE PODER SEGÚN PROPUESTA CORREGIDA DEL USUARIO
+            const pesosIniciales = prevSalUSD * tcS; 
+            const pesosFinales = salFinalUSD * tcE; 
+            
+            // Diferencial de Inflación (Factor A)
+            const difInf = (1 + (infR / 100)) / (1 + (infT1 / 100));
+            
+            // Resultado 1 (Al final): USD Ini * TC Fin * ( (TC Inicio / TC Final) * (Inf Real / Inf Proy) )
+            // Corregido: tcS / tcE según instrucción del usuario
+            const resultado1 = prevSalUSD * tcE * ((tcS / tcE) * difInf);
+            
+            // Resultado 2 (Inicio ajustado): Pesos Iniciales * Diferencial de Inflación
+            const resultado2 = pesosIniciales * difInf;
+
+            // Índice PA para gráficos (Base 100)
+            const indicePA = (resultado1 / resultado2) * 100;
 
             entries.push({
                 period, tcS, tcE, infR, infT1, infT2, recE,
                 factorInf, factorTC, factorBaseT2, rawFactor, baseCoef, recExtraDec, coefFinal,
                 salFinalUSD, nextAcum, prevSalUSD, prevAcum,
-                pesosIniciales, pesosFinales, pesosFinalesReales, indicePA
+                pesosIniciales, pesosFinales, resultado1, resultado2, indicePA, difInf
             });
 
             document.getElementById('emptyState').classList.add('hidden');
@@ -254,8 +259,10 @@
             renderCharts();
             
             const last = entries[entries.length - 1];
-            document.getElementById('mainIndexVal').textContent = last.indicePA.toFixed(2);
-            document.getElementById('mainIndexVal').className = last.indicePA >= 100 ? "text-3xl font-black text-success-green" : "text-3xl font-black text-red-600";
+            const valEl = document.getElementById('mainIndexVal');
+            valEl.textContent = last.indicePA.toFixed(2);
+            valEl.className = last.indicePA >= 99.99 ? "text-3xl font-black text-success-green" : "text-3xl font-black text-red-600";
+            document.getElementById('statusIcon').textContent = last.indicePA >= 99.99 ? "✅" : "⚠️";
         }
 
         function renderTable() {
@@ -265,8 +272,6 @@
             entries.forEach(d => {
                 const tr = document.createElement('tr');
                 tr.className = "bg-white font-bold text-slate-800 border-t border-slate-100";
-                
-                // Cálculo del incremento efectivo para mostrar en columna verde
                 const ajusteEfectivoPct = (d.coefFinal - 1) * 100;
 
                 tr.innerHTML = `
@@ -276,7 +281,7 @@
                     <td class="p-5 text-right font-black text-success-green bg-green-50">${ajusteEfectivoPct.toFixed(2)}%</td>
                     <td class="p-5 text-right text-slate-500">$${d.pesosFinales.toLocaleString('es-ES', {minimumFractionDigits: 2})}</td>
                     <td class="p-5 text-center">
-                        <span class="badge-pa ${d.indicePA >= 100 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                        <span class="badge-pa ${d.indicePA >= 99.99 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
                             ${d.indicePA.toFixed(2)}
                         </span>
                     </td>
@@ -284,41 +289,61 @@
                 body.appendChild(tr);
 
                 const vr = document.createElement('tr');
-                vr.className = "bg-gray-50 border-b-2 border-slate-200";
+                vr.className = "bg-gray-50 border-b-4 border-slate-200";
                 
-                // Líneas de desglose (A, B, C, D)
-                const lineA = `<span class="step-block text-lg"><strong>[A] Diferencial de Inflación:</strong> (1 + ${ (d.infR/100).toFixed(4) } [Real]) / (1 + ${ (d.infT1/100).toFixed(4) } [T1]) = <b class="text-blue-700 font-black">${d.factorInf.toFixed(4)}</b></span>`;
-                const lineB = `<span class="step-block text-lg"><strong>[B] Diferencial Tipo Cambio:</strong> ${ d.tcS.toFixed(2) } [Ini] / ${ d.tcE.toFixed(2) } [Fin] = <b class="text-blue-700 font-black">${d.factorTC.toFixed(4)}</b></span>`;
-                const lineC = `<span class="step-block text-lg"><strong>[C] Base Proyección T2:</strong> 1 + ${ (d.infT2/100).toFixed(4) } = <b class="text-blue-700 font-black">${d.factorBaseT2.toFixed(4)}</b></span>`;
-                const lineD = `<span class="step-block text-lg"><strong>[D] Factor Neto Resultante:</strong> ${d.factorBaseT2.toFixed(4)} [C] * ${d.factorInf.toFixed(4)} [A] * ${d.factorTC.toFixed(4)} [B] * ${d.prevAcum.toFixed(4)} [Acum] = <b class="text-indigo-800 font-black">${d.rawFactor.toFixed(4)}</b></span>`;
+                const lineA = `<span class="step-block text-xl"><strong>[A] Diferencial de Inflación:</strong> (1 + ${ (d.infR/100).toFixed(4) } [Real]) / (1 + ${ (d.infT1/100).toFixed(4) } [T1]) = <b class="text-blue-800">${d.factorInf.toFixed(4)}</b></span>`;
+                const lineB = `<span class="step-block text-xl"><strong>[B] Diferencial Tipo Cambio:</strong> ${ d.tcS.toFixed(2) } [Inicio] / ${ d.tcE.toFixed(2) } [Final] = <b class="text-blue-800">${d.factorTC.toFixed(4)}</b></span>`;
+                const lineC = `<span class="step-block text-xl"><strong>[C] Base Proyección T2:</strong> (1 + ${ (d.infT2/100).toFixed(4) }) = <b class="text-blue-800">${d.factorBaseT2.toFixed(4)}</b></span>`;
+                const lineD = `<span class="step-block text-xl"><strong>[D] Factor Neto (C*A*B*Acum):</strong> ${d.factorBaseT2.toFixed(4)} * ${d.factorInf.toFixed(4)} * ${d.factorTC.toFixed(4)} * ${d.prevAcum.toFixed(4)} = <b class="text-indigo-900">${d.rawFactor.toFixed(4)}</b></span>`;
                 
-                // RESALTADO DE RESULTADO FINAL CON RECUPERACIÓN EXTRA EXPLÍCITA
-                const lineRes = `<div class="step-block text-xl bg-blue-50 p-4 border-l-4 border-blue-600 rounded-r-lg">
-                    <strong class="text-blue-900 font-black uppercase tracking-tight">[RESULTADO FINAL]:</strong> 
-                    MAX(1 ; ${d.rawFactor.toFixed(4)} [Neto]) + <span class="text-success-green font-black">${d.recExtraDec.toFixed(4)} [Recup]</span> = 
-                    <b class="text-accent-blue font-black underline">${d.coefFinal.toFixed(4)}</b>
+                const lineRes = `<div class="step-block text-2xl bg-white p-6 border-2 border-accent-blue rounded-2xl shadow-sm mt-4">
+                    <strong class="text-accent-blue uppercase tracking-tight">[CÁLCULO FINAL]:</strong> 
+                    MAX(1 ; ${d.rawFactor.toFixed(4)}) + <span class="text-success-green font-black">${d.recExtraDec.toFixed(4)} [Recup]</span> = 
+                    <b class="underline decoration-accent-gold decoration-4">${d.coefFinal.toFixed(4)}</b>
                 </div>`;
 
-                // PRUEBA DE CONTROL
+                // PRUEBA DE PODER ADQUISITIVO (CORREGIDA: TC INI / TC FIN)
                 const controlProof = `
-                    <div class="mt-4 p-6 bg-white rounded-2xl border-2 border-slate-200 shadow-sm">
-                        <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 italic">Prueba de Poder Adquisitivo</h4>
-                        <div class="space-y-2 text-base font-medium text-slate-700">
-                            <p>1. Capital Inicial en Pesos: <b>$${d.pesosIniciales.toLocaleString('es-ES', {minimumFractionDigits: 2})}</b></p>
-                            <p>2. Capital Final en Pesos Reales (Descontada Inflación): <b>$${d.pesosFinalesReales.toLocaleString('es-ES', {minimumFractionDigits: 2})}</b></p>
-                            <p class="pt-2 border-t mt-2 text-lg">
-                                <b>Relación de Control:</b> ${d.pesosFinalesReales.toFixed(2)} / ${d.pesosIniciales.toFixed(2)} = 
-                                <span class="${d.indicePA >= 100 ? 'text-success-green font-black' : 'text-red-600 font-black'}">
-                                    Índice ${d.indicePA.toFixed(2)} ${d.indicePA >= 100 ? '(Verificado ✅)' : '(Pérdida ❌)'}
-                                </span>
-                            </p>
+                    <div class="mt-8 p-8 bg-slate-900 text-white rounded-3xl shadow-2xl highlight-box">
+                        <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 italic">Prueba Técnica de Poder Adquisitivo (R1 vs R2)</h4>
+                        <div class="space-y-4 text-lg">
+                            <div class="flex justify-between border-b border-slate-700 pb-2">
+                                <span>Inicio del Semestre:</span>
+                                <span class="font-mono">$${d.prevSalUSD.toFixed(2)} USD * $${d.tcS.toFixed(2)} TC = $${d.pesosIniciales.toLocaleString('es-ES', {minimumFractionDigits: 2})}</span>
+                            </div>
+                            
+                            <div class="bg-slate-800 p-4 rounded-xl space-y-3">
+                                <div class="flex flex-col border-b border-slate-600 pb-2">
+                                    <span class="text-xs text-slate-400 uppercase font-bold">Resultado 1 (Al Final del Semestre):</span>
+                                    <span class="text-sm">USD 100 * $${d.tcE.toFixed(2)} * (($${d.tcS.toFixed(2)} / $${d.tcE.toFixed(2)}) * ${d.difInf.toFixed(4)})</span>
+                                    <span class="text-xl font-black text-blue-400">R1 = $${d.resultado1.toLocaleString('es-ES', {minimumFractionDigits: 2})}</span>
+                                </div>
+                                
+                                <div class="flex flex-col">
+                                    <span class="text-xs text-slate-400 uppercase font-bold">Resultado 2 (Inicio con Diferencial Inflación):</span>
+                                    <span class="text-sm">$${d.pesosIniciales.toFixed(2)} * ${d.difInf.toFixed(4)}</span>
+                                    <span class="text-xl font-black text-green-400">R2 = $${d.resultado2.toLocaleString('es-ES', {minimumFractionDigits: 2})}</span>
+                                </div>
+                            </div>
+
+                            <div class="pt-4 border-t border-slate-600 mt-4 text-center">
+                                <p class="text-sm uppercase tracking-widest text-slate-400 mb-2 font-bold">Estado de la Verificación</p>
+                                <div class="text-3xl font-black">
+                                    <span class="${Math.abs(d.resultado1 - d.resultado2) < 0.1 ? 'text-success-green' : 'text-red-500'}">
+                                        ${Math.abs(d.resultado1 - d.resultado2) < 0.1 ? 'R1 ≈ R2 (Correcto ✅)' : 'Desviación detectada ❌'}
+                                    </span>
+                                </div>
+                                <p class="text-xs mt-3 text-slate-400 italic">
+                                    La prueba utiliza el ratio (TC Inicio / TC Final) para validar la compensación cambiaria exacta.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 `;
 
                 vr.innerHTML = `
-                    <td colspan="6" class="p-8 formula-mono text-slate-600">
-                        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-inner space-y-1 mb-4">
+                    <td colspan="6" class="p-10 formula-mono">
+                        <div class="bg-white p-8 rounded-3xl border-2 border-slate-100 shadow-inner space-y-1 mb-6">
                             ${lineA}
                             ${lineB}
                             ${lineC}
@@ -335,8 +360,8 @@
         function renderCharts() {
             const labels = entries.map(d => d.period);
             const paIdx = entries.map(d => d.indicePA);
-            const rSal = entries.map(d => d.pesosFinalesReales);
-            const iSal = entries.map(d => d.pesosIniciales);
+            const r1 = entries.map(d => d.resultado1);
+            const r2 = entries.map(d => d.resultado2);
 
             if (idxChart) idxChart.destroy();
             idxChart = new Chart(document.getElementById('idxChart'), {
@@ -350,11 +375,17 @@
                         backgroundColor: 'rgba(21, 128, 61, 0.1)',
                         fill: true,
                         tension: 0.3,
-                        pointRadius: 6,
-                        pointHoverRadius: 10
+                        pointRadius: 8,
+                        pointHoverRadius: 12,
+                        pointBackgroundColor: '#fff',
+                        borderWidth: 4
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 98, max: 105 } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { y: { min: 95, max: 105, grid: { color: '#f1f5f9' } } }
+                }
             });
 
             if (valChart) valChart.destroy();
@@ -363,11 +394,15 @@
                 data: {
                     labels,
                     datasets: [
-                        { label: 'Pesos Iniciales', data: iSal, backgroundColor: '#cbd5e0' },
-                        { label: 'Pesos Reales Finales', data: rSal, backgroundColor: '#15803d' }
+                        { label: 'R2 (Base)', data: r2, backgroundColor: '#cbd5e0', borderRadius: 6 },
+                        { label: 'R1 (Final)', data: r1, backgroundColor: '#15803d', borderRadius: 6 }
                     ]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: false, grid: { color: '#f1f5f9' } } }
+                }
             });
         }
 
